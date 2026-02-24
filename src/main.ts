@@ -1,8 +1,12 @@
 require('dotenv').config();
+
 import Redis from 'ioredis';
 import Fastify from 'fastify';
 import FastifyCors from '@fastify/cors';
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
 import fs from 'fs';
+import chalk from 'chalk';
 
 import books from './routes/books';
 import anime from './routes/anime';
@@ -12,7 +16,6 @@ import lightnovels from './routes/light-novels';
 import movies from './routes/movies';
 import meta from './routes/meta';
 import news from './routes/news';
-import chalk from 'chalk';
 import Utils from './utils';
 
 export const redis =
@@ -23,74 +26,84 @@ export const redis =
     password: process.env.REDIS_PASSWORD,
   });
 
-// Sets default TTL to 1 hour (3600 seconds) if not provided in .env
+// Default TTL 1 hour
 export const REDIS_TTL = Number(process.env.REDIS_TTL) || 3600;
 
 const fastify = Fastify({
   maxParamLength: 1000,
   logger: true,
 });
+
 export const tmdbApi = process.env.TMDB_KEY && process.env.TMDB_KEY;
+
 (async () => {
   const PORT = Number(process.env.PORT) || 3000;
 
   await fastify.register(FastifyCors, {
     origin: '*',
-    methods: 'GET',
+    methods: ['GET'],
   });
 
+  /**
+   * ---------------------------
+   * Swagger Documentation Setup
+   * ---------------------------
+   */
+  await fastify.register(swagger, {
+    openapi: {
+      info: {
+        title: 'Consumet API',
+        description: 'Self-hosted Consumet API documentation',
+        version: '1.0.0',
+      },
+    },
+  });
+
+  await fastify.register(swaggerUI, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false,
+    },
+  });
+
+  /**
+   * ---------------------------
+   * DEMO MODE
+   * ---------------------------
+   */
   if (process.env.NODE_ENV === 'DEMO') {
     console.log(chalk.yellowBright('DEMO MODE ENABLED'));
 
     const map = new Map<string, { expiresIn: Date }>();
-    // session duration in milliseconds (5 hours)
     const sessionDuration = 1000 * 60 * 60 * 5;
 
     fastify.addHook('onRequest', async (request, reply) => {
       const ip = request.ip;
       const session = map.get(ip);
 
-      // check if the requester ip has a session (temporary access)
       if (session) {
-        // if session is found, check if the session is expired
         const { expiresIn } = session;
-        const currentTime = new Date();
-        const sessionTime = new Date(expiresIn);
-
-        // check if the session has been expired
-        if (currentTime.getTime() > sessionTime.getTime()) {
-          console.log('session expired');
-          // if expired, delete the session and continue
+        if (Date.now() > expiresIn.getTime()) {
           map.delete(ip);
-
-          // redirect to the demo request page
           return reply.redirect('/apidemo');
         }
-        console.log('session found. expires in', expiresIn);
+
         if (request.url === '/apidemo') return reply.redirect('/');
         return;
       }
 
-      // if route is not /apidemo, redirect to the demo request page
       if (request.url === '/apidemo') return;
-
-      console.log('session not found');
       reply.redirect('/apidemo');
     });
 
     fastify.post('/apidemo', async (request, reply) => {
       const { ip } = request;
+      if (map.get(ip)) return reply.redirect('/');
 
-      // check if the requester ip has a session (temporary access)
-      const session = map.get(ip);
-
-      if (session) return reply.redirect('/');
-
-      // if no session, create a new session
       const expiresIn = new Date(Date.now() + sessionDuration);
       map.set(ip, { expiresIn });
 
-      // redirect to the demo request page
       reply.redirect('/');
     });
 
@@ -99,45 +112,50 @@ export const tmdbApi = process.env.TMDB_KEY && process.env.TMDB_KEY;
         const stream = fs.readFileSync(__dirname + '/../demo/apidemo.html');
         return reply.type('text/html').send(stream);
       } catch (err) {
-        console.error(err);
         return reply.status(500).send({
-          message: 'Could not load the demo page. Please try again later.',
+          message: 'Could not load demo page.',
         });
       }
     });
 
-    // set interval to delete expired sessions every 1 hour
-    setInterval(
-      () => {
-        const currentTime = new Date();
-        for (const [ip, session] of map.entries()) {
-          const { expiresIn } = session;
-          const sessionTime = new Date(expiresIn);
-
-          // check if the session is expired
-          if (currentTime.getTime() > sessionTime.getTime()) {
-            console.log('session expired for', ip);
-            // if expired, delete the session and continue
-            map.delete(ip);
-          }
+    setInterval(() => {
+      const now = Date.now();
+      for (const [ip, session] of map.entries()) {
+        if (now > session.expiresIn.getTime()) {
+          map.delete(ip);
         }
-      },
-      1000 * 60 * 60,
-    );
+      }
+    }, 1000 * 60 * 60);
   }
 
+  /**
+   * ---------------------------
+   * Server Startup Logs
+   * ---------------------------
+   */
   console.log(chalk.green(`Starting server on port ${PORT}... 🚀`));
+
   if (!process.env.REDIS_HOST) {
     console.warn(chalk.yellowBright('Redis not found. Cache disabled.'));
   } else {
-    console.log(chalk.green(`Redis connected. Default Cache TTL: ${REDIS_TTL} seconds`));
+    console.log(
+      chalk.green(`Redis connected. Default Cache TTL: ${REDIS_TTL} seconds`)
+    );
   }
 
-  if (!process.env.TMDB_KEY)
+  if (!process.env.TMDB_KEY) {
     console.warn(
-      chalk.yellowBright('TMDB api key not found. the TMDB meta route may not work.'),
+      chalk.yellowBright(
+        'TMDB api key not found. TMDB meta route may not work.'
+      )
     );
+  }
 
+  /**
+   * ---------------------------
+   * Route Registration
+   * ---------------------------
+   */
   await fastify.register(books, { prefix: '/books' });
   await fastify.register(anime, { prefix: '/anime' });
   await fastify.register(manga, { prefix: '/manga' });
@@ -148,32 +166,43 @@ export const tmdbApi = process.env.TMDB_KEY && process.env.TMDB_KEY;
   await fastify.register(news, { prefix: '/news' });
   await fastify.register(Utils, { prefix: '/utils' });
 
-  try {
-    fastify.get('/', (_, rp) => {
-      rp.status(200).send(
-        `Welcome to consumet api! 🎉 \n${
-          process.env.NODE_ENV === 'DEMO'
-            ? 'This is a demo of the api. You should only use this for testing purposes.'
-            : ''
-        }`,
-      );
-    });
-    fastify.get('*', (request, reply) => {
-      reply.status(404).send({
-        message: '',
-        error: 'page not found',
-      });
-    });
+  /**
+   * ---------------------------
+   * Root + 404
+   * ---------------------------
+   */
+  fastify.get('/', (_, reply) => {
+    reply.status(200).send(
+      `Welcome to consumet api! 🎉`
+    );
+  });
 
-    fastify.listen({ port: PORT, host: '0.0.0.0' }, (e, address) => {
-      if (e) throw e;
-      console.log(`server listening on ${address}`);
+  fastify.setNotFoundHandler((request, reply) => {
+    reply.status(404).send({
+      error: 'Page not found',
+    });
+  });
+
+  /**
+   * ---------------------------
+   * Start Server
+   * ---------------------------
+   */
+  try {
+    fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
+      if (err) throw err;
+      console.log(`Server listening at ${address}`);
+      console.log(`Swagger docs available at ${address}/docs`);
     });
   } catch (err: any) {
     fastify.log.error(err);
     process.exit(1);
   }
 })();
+
+/**
+ * Vercel / Serverless Handler
+ */
 export default async function handler(req: any, res: any) {
   await fastify.ready();
   fastify.server.emit('request', req, res);

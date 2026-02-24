@@ -8,15 +8,28 @@ import { Redis } from 'ioredis';
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   const animepahe = new ANIME.AnimePahe();
 
-  fastify.get('/', (_, rp) => {
-    rp.status(200).send({
-      intro: `Welcome to the animepahe provider: check out the provider's website @ ${animepahe.toString.baseUrl}`,
-      routes: ['/:query', '/info/:id', '/watch/:episodeId', '/recent-episodes'],
+  // Root
+  fastify.get('/', async (_, reply) => {
+    reply.status(200).send({
+      intro: `Welcome to the animepahe provider`,
+      routes: ['/:query', '/info/:id', '/watch?episodeId=', '/recent-episodes?page='],
       documentation: 'https://docs.consumet.org/#tag/animepahe',
     });
   });
 
-  fastify.get('/:query', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Search
+  fastify.get('/:query', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: { type: 'string' }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+
     const query = (request.params as { query: string }).query;
 
     try {
@@ -30,39 +43,62 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         : await animepahe.search(query);
 
       reply.status(200).send(res);
-    } catch (err) {
-      reply.status(500).send({
-        message: 'Something went wrong. Contact developer for help.',
-      });
+    } catch {
+      reply.status(500).send({ message: 'Something went wrong.' });
     }
   });
 
-  fastify.get(
-    '/recent-episodes',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const page = (request.query as { page: number }).page;
-      try {
-        let res = redis
-          ? await cache.fetch(
-              redis as Redis,
-              `animepahe:recent-episodes:${page}`,
-              async () => await animepahe.fetchRecentEpisodes(page),
-              REDIS_TTL,
-            )
-          : await animepahe.fetchRecentEpisodes(page);
-
-        reply.status(200).send(res);
-      } catch (error) {
-        reply.status(500).send({
-          message: 'Something went wrong. Contact developer for help.',
-        });
+  // Recent Episodes
+  fastify.get('/recent-episodes', {
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          page: { type: 'number', default: 1 }
+        }
       }
-    },
-  );
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
 
-  fastify.get('/info/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const page = (request.query as { page?: number }).page || 1;
+
+    try {
+      let res = redis
+        ? await cache.fetch(
+            redis as Redis,
+            `animepahe:recent-episodes:${page}`,
+            async () => await animepahe.fetchRecentEpisodes(page),
+            REDIS_TTL,
+          )
+        : await animepahe.fetchRecentEpisodes(page);
+
+      reply.status(200).send(res);
+    } catch {
+      reply.status(500).send({ message: 'Something went wrong.' });
+    }
+  });
+
+  // Anime Info
+  fastify.get('/info/:id', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          episodePage: { type: 'number', default: 1 }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+
     const id = decodeURIComponent((request.params as { id: string }).id);
-    const episodePage = (request.query as { episodePage: number }).episodePage;
+    const episodePage = (request.query as { episodePage?: number }).episodePage || 1;
 
     try {
       let res = redis
@@ -75,17 +111,27 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         : await animepahe.fetchAnimeInfo(id, episodePage);
 
       reply.status(200).send(res);
-    } catch (err) {
-      reply
-        .status(500)
-        .send({ message: 'Something went wrong. Contact developer for help.' });
+    } catch {
+      reply.status(500).send({ message: 'Something went wrong.' });
     }
   });
 
-  fastify.get('/watch', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Watch Episode
+  fastify.get('/watch', {
+    schema: {
+      querystring: {
+        type: 'object',
+        required: ['episodeId'],
+        properties: {
+          episodeId: { type: 'string' }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+
     const episodeId = (request.query as { episodeId: string }).episodeId;
 
-    if (typeof episodeId === 'undefined')
+    if (!episodeId)
       return reply.status(400).send({ message: 'episodeId is required' });
 
     try {
@@ -101,9 +147,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       reply.status(200).send(res);
     } catch (err) {
       console.log(err);
-      reply
-        .status(500)
-        .send({ message: 'Something went wrong. Contact developer for help.' });
+      reply.status(500).send({ message: 'Something went wrong.' });
     }
   });
 };
