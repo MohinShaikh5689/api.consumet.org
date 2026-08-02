@@ -64,11 +64,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     }
   });
 
-  fastify.get('/info', async (request: FastifyRequest, reply: FastifyReply) => {
-    const id = (request.query as { id: string }).id;
-
-    if (typeof id === 'undefined')
-      return reply.status(400).send({ message: 'id is required' });
+  fastify.get(
+    '/info',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const id = (request.query as { id: string }).id;
 
     try {
       let res = redis
