@@ -42,9 +42,28 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     });
   });
 
-  fastify.get('/:query', async (request: FastifyRequest, reply: FastifyReply) => {
-    const query = (request.params as { query: string }).query;
-    const page = (request.query as { page: number }).page;
+  fastify.get(
+    '/:query',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            query: { type: 'string' },
+          },
+          required: ['query'],
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = (request.params as { query: string }).query;
+      const page = (request.query as { page: number }).page;
 
     try {
       let res = redis
@@ -100,6 +119,24 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
   fastify.get(
     '/watch/:episodeId',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            episodeId: { type: 'string' },
+          },
+          required: ['episodeId'],
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            server: { type: 'string', enum: Object.values(StreamingServers) },
+            category: { type: 'string', enum: ['sub', 'dub'] },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const episodeId = (request.params as { episodeId: string }).episodeId;
       const server = (request.query as { server: StreamingServers }).server;
@@ -146,8 +183,20 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     }
   });
 
-  fastify.get('/schedule', async (request: FastifyRequest, reply: FastifyReply) => {
-    const date = (request.query as { date?: string }).date || new Date().toISOString().slice(0, 10);
+  fastify.get(
+    '/schedule',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            date: { type: 'string', description: 'Date in YYYY-MM-DD format (default: today)' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const date = (request.query as { date?: string }).date || new Date().toISOString().slice(0, 10);
 
     try {
       let res = redis
@@ -212,6 +261,26 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
   fastify.get(
     '/advanced-search',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            type: { type: 'string' },
+            status: { type: 'string' },
+            rated: { type: 'string' },
+            score: { type: 'number' },
+            season: { type: 'string' },
+            language: { type: 'string' },
+            startDate: { type: 'string' },
+            endDate: { type: 'string' },
+            sort: { type: 'string' },
+            genres: { type: 'string' },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const queryParams = request.query as {
         page?: number;
@@ -699,8 +768,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     }
   });
 
-  fastify.get('/download/:episodeId', async (request: FastifyRequest, reply: FastifyReply) => {
-    const episodeId = (request.params as { episodeId: string }).episodeId;
+  fastify.get(
+    '/download/:episodeId',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            episodeId: { type: 'string' },
+          },
+          required: ['episodeId'],
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const episodeId = (request.params as { episodeId: string }).episodeId;
 
     try {
       let res = await anikoto.fetchDownloadLinks(episodeId);
