@@ -7,11 +7,11 @@ import { redis, REDIS_TTL } from '../../main';
 import { Redis } from 'ioredis';
 
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
-  const hianime = new ANIME.Hianime();
+  const anikoto = new ANIME.AniKoto();
 
   fastify.get('/', (_, rp) => {
     rp.status(200).send({
-      intro: `Welcome to the hianime provider: check out the provider's website @ ${hianime.toString.baseUrl}`,
+      intro: `Welcome to the anikoto provider: check out the provider's website @ ${anikoto.toString.baseUrl}`,
       routes: [
         '/:query',
         '/info',
@@ -38,7 +38,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         '/spotlight',
         '/search-suggestions/:query',
       ],
-      documentation: 'https://docs.consumet.org/#tag/hianime',
+      documentation: 'https://docs.consumet.org/#tag/anikoto',
     });
   });
 
@@ -50,11 +50,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:search:${query}:${page}`,
-            async () => await hianime.search(query, page),
+            `anikoto:search:${query}:${page}`,
+            async () => await anikoto.search(query, page),
             REDIS_TTL,
           )
-        : await hianime.search(query, page);
+        : await anikoto.search(query, page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -74,11 +74,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:info:${id}`,
-            async () => await hianime.fetchAnimeInfo(id),
+            `anikoto:info:${id}`,
+            async () => await anikoto.fetchAnimeInfo(id),
             REDIS_TTL,
           )
-        : await hianime.fetchAnimeInfo(id);
+        : await anikoto.fetchAnimeInfo(id);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -102,11 +102,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `hianime:watch:${episodeId}:${server}:${category}`,
-              async () => await hianime.fetchEpisodeSources(episodeId, server, category),
+              `anikoto:watch:${episodeId}:${server}:${category}`,
+              async () => await anikoto.fetchEpisodeSources(episodeId, server, category),
               REDIS_TTL,
             )
-          : await hianime.fetchEpisodeSources(episodeId, server, category);
+          : await anikoto.fetchEpisodeSources(episodeId, server, category);
 
         reply.status(200).send(res);
       } catch (err) {
@@ -122,11 +122,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:genres`,
-            async () => await hianime.fetchGenres(),
+            `anikoto:genres`,
+            async () => await anikoto.fetchGenres(),
             REDIS_TTL,
           )
-        : await hianime.fetchGenres();
+        : await anikoto.fetchGenres();
 
       reply.status(200).send(res);
     } catch (err) {
@@ -137,17 +137,17 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   });
 
   fastify.get('/schedule', async (request: FastifyRequest, reply: FastifyReply) => {
-    const date = (request.query as { date: string }).date;
+    const date = (request.query as { date?: string }).date || new Date().toISOString().slice(0, 10);
 
     try {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:schedule:${date}`,
-            async () => await hianime.fetchSchedule(date),
+            `anikoto:schedule:${date}`,
+            async () => await anikoto.fetchSchedule(date),
             REDIS_TTL,
           )
-        : await hianime.fetchSchedule(date);
+        : await anikoto.fetchSchedule(date);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -162,11 +162,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:spotlight`,
-            async () => await hianime.fetchSpotlight(),
+            `anikoto:spotlight`,
+            async () => await anikoto.fetchSpotlight(),
             REDIS_TTL,
           )
-        : await hianime.fetchSpotlight();
+        : await anikoto.fetchSpotlight();
 
       reply.status(200).send(res);
     } catch (err) {
@@ -185,11 +185,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `hianime:suggestions:${query}`,
-              async () => await hianime.fetchSearchSuggestions(query),
+              `anikoto:suggestions:${query}`,
+              async () => await anikoto.fetchSearchSuggestions(query),
               REDIS_TTL,
             )
-          : await hianime.fetchSearchSuggestions(query);
+          : await anikoto.fetchSearchSuggestions(query);
 
         reply.status(200).send(res);
       } catch (err) {
@@ -248,14 +248,14 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         const genresArray = genres ? genres.split(',') : undefined;
 
         // Create a unique key based on all parameters
-        const cacheKey = `hianime:advanced-search:${JSON.stringify(queryParams)}`;
+        const cacheKey = `anikoto:advanced-search:${JSON.stringify(queryParams)}`;
 
         let res = redis
           ? await cache.fetch(
               redis as Redis,
               cacheKey,
               async () =>
-                await hianime.fetchAdvancedSearch(
+                await anikoto.fetchAdvancedSearch(
                   page,
                   type,
                   status,
@@ -270,7 +270,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
                 ),
               REDIS_TTL,
             )
-          : await hianime.fetchAdvancedSearch(
+          : await anikoto.fetchAdvancedSearch(
               page,
               type,
               status,
@@ -300,11 +300,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:top-airing:${page}`,
-            async () => await hianime.fetchTopAiring(page),
+            `anikoto:top-airing:${page}`,
+            async () => await anikoto.fetchTopAiring(page),
             REDIS_TTL,
           )
-        : await hianime.fetchTopAiring(page);
+        : await anikoto.fetchTopAiring(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -321,11 +321,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:most-popular:${page}`,
-            async () => await hianime.fetchMostPopular(page),
+            `anikoto:most-popular:${page}`,
+            async () => await anikoto.fetchMostPopular(page),
             REDIS_TTL,
           )
-        : await hianime.fetchMostPopular(page);
+        : await anikoto.fetchMostPopular(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -342,11 +342,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:most-favorite:${page}`,
-            async () => await hianime.fetchMostFavorite(page),
+            `anikoto:most-favorite:${page}`,
+            async () => await anikoto.fetchMostFavorite(page),
             REDIS_TTL,
           )
-        : await hianime.fetchMostFavorite(page);
+        : await anikoto.fetchMostFavorite(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -365,11 +365,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `hianime:latest-completed:${page}`,
-              async () => await hianime.fetchLatestCompleted(page),
+              `anikoto:latest-completed:${page}`,
+              async () => await anikoto.fetchLatestCompleted(page),
               REDIS_TTL,
             )
-          : await hianime.fetchLatestCompleted(page);
+          : await anikoto.fetchLatestCompleted(page);
 
         reply.status(200).send(res);
       } catch (err) {
@@ -389,11 +389,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `hianime:recently-updated:${page}`,
-              async () => await hianime.fetchRecentlyUpdated(page),
+              `anikoto:recently-updated:${page}`,
+              async () => await anikoto.fetchRecentlyUpdated(page),
               REDIS_TTL,
             )
-          : await hianime.fetchRecentlyUpdated(page);
+          : await anikoto.fetchRecentlyUpdated(page);
 
         reply.status(200).send(res);
       } catch (err) {
@@ -411,11 +411,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:recently-added:${page}`,
-            async () => await hianime.fetchRecentlyAdded(page),
+            `anikoto:recently-added:${page}`,
+            async () => await anikoto.fetchRecentlyAdded(page),
             REDIS_TTL,
           )
-        : await hianime.fetchRecentlyAdded(page);
+        : await anikoto.fetchRecentlyAdded(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -432,11 +432,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:top-upcoming:${page}`,
-            async () => await hianime.fetchTopUpcoming(page),
+            `anikoto:top-upcoming:${page}`,
+            async () => await anikoto.fetchTopUpcoming(page),
             REDIS_TTL,
           )
-        : await hianime.fetchTopUpcoming(page);
+        : await anikoto.fetchTopUpcoming(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -454,11 +454,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:studio:${studio}:${page}`,
-            async () => await hianime.fetchStudio(studio, page),
+            `anikoto:studio:${studio}:${page}`,
+            async () => await anikoto.fetchStudio(studio, page),
             REDIS_TTL,
           )
-        : await hianime.fetchStudio(studio, page);
+        : await anikoto.fetchStudio(studio, page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -475,11 +475,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:subbed:${page}`,
-            async () => await hianime.fetchSubbedAnime(page),
+            `anikoto:subbed:${page}`,
+            async () => await anikoto.fetchSubbedAnime(page),
             REDIS_TTL,
           )
-        : await hianime.fetchSubbedAnime(page);
+        : await anikoto.fetchSubbedAnime(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -496,11 +496,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:dubbed:${page}`,
-            async () => await hianime.fetchDubbedAnime(page),
+            `anikoto:dubbed:${page}`,
+            async () => await anikoto.fetchDubbedAnime(page),
             REDIS_TTL,
           )
-        : await hianime.fetchDubbedAnime(page);
+        : await anikoto.fetchDubbedAnime(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -517,11 +517,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:movie:${page}`,
-            async () => await hianime.fetchMovie(page),
+            `anikoto:movie:${page}`,
+            async () => await anikoto.fetchMovie(page),
             REDIS_TTL,
           )
-        : await hianime.fetchMovie(page);
+        : await anikoto.fetchMovie(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -538,11 +538,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:tv:${page}`,
-            async () => await hianime.fetchTV(page),
+            `anikoto:tv:${page}`,
+            async () => await anikoto.fetchTV(page),
             REDIS_TTL,
           )
-        : await hianime.fetchTV(page);
+        : await anikoto.fetchTV(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -559,11 +559,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:ova:${page}`,
-            async () => await hianime.fetchOVA(page),
+            `anikoto:ova:${page}`,
+            async () => await anikoto.fetchOVA(page),
             REDIS_TTL,
           )
-        : await hianime.fetchOVA(page);
+        : await anikoto.fetchOVA(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -580,11 +580,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:ona:${page}`,
-            async () => await hianime.fetchONA(page),
+            `anikoto:ona:${page}`,
+            async () => await anikoto.fetchONA(page),
             REDIS_TTL,
           )
-        : await hianime.fetchONA(page);
+        : await anikoto.fetchONA(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -601,11 +601,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:special:${page}`,
-            async () => await hianime.fetchSpecial(page),
+            `anikoto:special:${page}`,
+            async () => await anikoto.fetchSpecial(page),
             REDIS_TTL,
           )
-        : await hianime.fetchSpecial(page);
+        : await anikoto.fetchSpecial(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -623,17 +623,80 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       let res = redis
         ? await cache.fetch(
             redis as Redis,
-            `hianime:genre:${genre}:${page}`,
-            async () => await hianime.genreSearch(genre, page),
+            `anikoto:genre:${genre}:${page}`,
+            async () => await anikoto.genreSearch(genre, page),
             REDIS_TTL,
           )
-        : await hianime.genreSearch(genre, page);
+        : await anikoto.genreSearch(genre, page);
 
       reply.status(200).send(res);
     } catch (err) {
       reply
         .status(500)
         .send({ message: 'Something went wrong. Contact developer for help.' });
+    }
+  });
+
+  fastify.get('/random', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      let res = await anikoto.search('naruto', 1);
+      if (res.results && res.results.length > 0) {
+        const randomIndex = Math.floor(Math.random() * res.results.length);
+        return reply.status(200).send(res.results[randomIndex]);
+      }
+      reply.status(404).send({ message: 'No random title found' });
+    } catch (err) {
+      reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
+    }
+  });
+
+  fastify.get('/az-list/:letter', async (request: FastifyRequest, reply: FastifyReply) => {
+    const letter = (request.params as { letter: string }).letter;
+    const page = (request.query as { page: number }).page;
+
+    try {
+      let res = redis
+        ? await cache.fetch(
+            redis as Redis,
+            `anikoto:az-list:${letter}:${page}`,
+            async () => await anikoto.fetchAzList(letter, page),
+            REDIS_TTL,
+          )
+        : await anikoto.fetchAzList(letter, page);
+
+      reply.status(200).send(res);
+    } catch (err) {
+      reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
+    }
+  });
+
+  fastify.get('/watch-order/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const id = (request.params as { id: string }).id;
+
+    try {
+      let res = redis
+        ? await cache.fetch(
+            redis as Redis,
+            `anikoto:watch-order:${id}`,
+            async () => await anikoto.fetchWatchOrder(id),
+            REDIS_TTL,
+          )
+        : await anikoto.fetchWatchOrder(id);
+
+      reply.status(200).send(res);
+    } catch (err) {
+      reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
+    }
+  });
+
+  fastify.get('/download/:episodeId', async (request: FastifyRequest, reply: FastifyReply) => {
+    const episodeId = (request.params as { episodeId: string }).episodeId;
+
+    try {
+      let res = await anikoto.fetchDownloadLinks(episodeId);
+      reply.status(200).send(res);
+    } catch (err) {
+      reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
     }
   });
 };

@@ -7,7 +7,7 @@ import { StreamingServers } from '@consumet/extensions/dist/models';
 
 import cache from '../../utils/cache';
 import { redis } from '../../main';
-import Hianime from '@consumet/extensions/dist/providers/anime/hianime';
+import AniKoto from '@consumet/extensions/dist/providers/anime/anikoto';
 import Providers from '../../utils/providers';
 
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
@@ -174,7 +174,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   (fastify.get(
     '/recent-episodes',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const provider = (request.query as { provider:  'Hianime' }).provider;
+      const provider = (request.query as { provider: 'AniKoto' }).provider;
       const page = (request.query as { page: number }).page;
       const perPage = (request.query as { perPage: number }).perPage;
 
@@ -409,7 +409,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 };
 
 const generateAnilistMeta = (provider: string | undefined = undefined): Anilist => {
-  return new Anilist(new Hianime(), {
+  return new Anilist(new AniKoto(), {
     url: process.env.PROXY as string | string[],
   });
 };

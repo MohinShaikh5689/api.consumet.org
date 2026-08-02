@@ -1,20 +1,18 @@
 import { FastifyRequest, FastifyReply, FastifyInstance, RegisterOptions } from 'fastify';
 import { PROVIDERS_LIST } from '@consumet/extensions';
 
-import animeunity from './animeunity';
-import animepahe from './animepahe';
-import hianime from './hianime';
+import animeworld from './animeworld';
+import anikoto from './anikoto';
 import animekai from './animekai';
 import animesaturn from './animesaturn';
-import kickassanime from './kickassanime';
+import gogoanime from './gogoanime';
 
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
-  await fastify.register(animepahe, { prefix: '/animepahe' });
-  await fastify.register(animeunity, { prefix: '/animeunity' });
-  await fastify.register(hianime, { prefix: '/hianime' });
+  await fastify.register(animeworld, { prefix: '/animeworld' });
+  await fastify.register(anikoto, { prefix: '/anikoto' });
   await fastify.register(animekai, { prefix: '/animekai' });
   await fastify.register(animesaturn, { prefix: '/animesaturn' });
-  await fastify.register(kickassanime, { prefix: '/kickassanime' });
+  await fastify.register(gogoanime, { prefix: '/gogoanime' });
 
   fastify.get('/', async (request: any, reply: any) => {
     reply.status(200).send('Welcome to Consumet Anime 🗾');
