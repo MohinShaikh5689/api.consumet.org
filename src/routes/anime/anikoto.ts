@@ -549,10 +549,10 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         ? await cache.fetch(
             redis as Redis,
             `anikoto:tv:${page}`,
-            async () => await anikoto.fetchTV(page),
+            async () => await anikoto.fetchTv(page),
             REDIS_TTL,
           )
-        : await anikoto.fetchTV(page);
+        : await anikoto.fetchTv(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -570,10 +570,10 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         ? await cache.fetch(
             redis as Redis,
             `anikoto:ova:${page}`,
-            async () => await anikoto.fetchOVA(page),
+            async () => await anikoto.fetchOva(page),
             REDIS_TTL,
           )
-        : await anikoto.fetchOVA(page);
+        : await anikoto.fetchOva(page);
 
       reply.status(200).send(res);
     } catch (err) {
@@ -591,10 +591,10 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         ? await cache.fetch(
             redis as Redis,
             `anikoto:ona:${page}`,
-            async () => await anikoto.fetchONA(page),
+            async () => await anikoto.fetchOna(page),
             REDIS_TTL,
           )
-        : await anikoto.fetchONA(page);
+        : await anikoto.fetchOna(page);
 
       reply.status(200).send(res);
     } catch (err) {
