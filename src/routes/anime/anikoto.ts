@@ -128,19 +128,10 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
           },
           required: ['episodeId'],
         },
-        querystring: {
-          type: 'object',
-          properties: {
-            server: { type: 'string', enum: Object.values(StreamingServers) },
-            category: { type: 'string', enum: ['sub', 'dub'] },
-          },
-        },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const episodeId = (request.params as { episodeId: string }).episodeId;
-      const server = (request.query as { server: StreamingServers }).server;
-      const category = (request.query as { category: SubOrSub }).category;
 
       if (typeof episodeId === 'undefined')
         return reply.status(400).send({ message: 'episodeId is required' });
@@ -149,11 +140,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `anikoto:watch:${episodeId}:${server}:${category}`,
-              async () => await anikoto.fetchEpisodeSources(episodeId, server, category),
+              `anikoto:watch:${episodeId}`,
+              async () => await anikoto.fetchEpisodeSources(episodeId),
               REDIS_TTL,
             )
-          : await anikoto.fetchEpisodeSources(episodeId, server, category);
+          : await anikoto.fetchEpisodeSources(episodeId);
 
         reply.status(200).send(res);
       } catch (err) {

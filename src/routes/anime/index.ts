@@ -3,16 +3,18 @@ import { PROVIDERS_LIST } from '@consumet/extensions';
 
 import animeworld from './animeworld';
 import anikoto from './anikoto';
-import animekai from './animekai';
+import reanime from './reanime';
 import animesaturn from './animesaturn';
 import gogoanime from './gogoanime';
+import miruro from './miruro';
 
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   await fastify.register(animeworld, { prefix: '/animeworld' });
   await fastify.register(anikoto, { prefix: '/anikoto' });
-  await fastify.register(animekai, { prefix: '/animekai' });
+  await fastify.register(reanime, { prefix: '/reanime' });
   await fastify.register(animesaturn, { prefix: '/animesaturn' });
   await fastify.register(gogoanime, { prefix: '/gogoanime' });
+  await fastify.register(miruro, { prefix: '/miruro' });
 
   fastify.get('/', async (request: any, reply: any) => {
     reply.status(200).send('Welcome to Consumet Anime 🗾');

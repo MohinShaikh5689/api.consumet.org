@@ -38,11 +38,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     }
   });
 
-  fastify.get('/info', async (request: FastifyRequest, reply: FastifyReply) => {
-    const id = (request.query as { id: string }).id;
-
-    if (typeof id === 'undefined')
-      return reply.status(400).send({ message: 'id is required' });
+  fastify.get(
+    '/info',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const id = (request.query as { id: string }).id;
 
     try {
       let res = redis
@@ -56,6 +66,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
       reply.status(200).send(res);
     } catch (err) {
+      console.error('AnimeSaturn route error:', err);
       reply
         .status(500)
         .send({ message: 'Something went wrong. Contact developer for help.' });
@@ -63,11 +74,22 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   });
 
   fastify.get(
-    '/watch/:episodeId',
+    '/watch/*',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            '*': { type: 'string', description: 'episodeId' },
+          },
+          required: ['*'],
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const episodeId = (request.params as { episodeId: string }).episodeId;
+      const episodeId = (request.params as { '*': string })['*'];
 
-      if (typeof episodeId === 'undefined')
+      if (!episodeId)
         return reply.status(400).send({ message: 'episodeId is required' });
 
       try {
@@ -82,6 +104,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
         reply.status(200).send(res);
       } catch (err) {
+        console.error('AnimeSaturn route error:', err);
         reply
           .status(500)
           .send({ message: 'Something went wrong. Contact developer for help.' });
@@ -90,11 +113,22 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   );
 
   fastify.get(
-    '/servers/:episodeId',
+    '/servers/*',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            '*': { type: 'string', description: 'episodeId' },
+          },
+          required: ['*'],
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const episodeId = (request.params as { episodeId: string }).episodeId;
+      const episodeId = (request.params as { '*': string })['*'];
 
-      if (typeof episodeId === 'undefined')
+      if (!episodeId)
         return reply.status(400).send({ message: 'episodeId is required' });
 
       try {
@@ -109,6 +143,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
         reply.status(200).send(res);
       } catch (err) {
+        console.error('AnimeSaturn route error:', err);
         reply
           .status(500)
           .send({ message: 'Something went wrong. Contact developer for help.' });

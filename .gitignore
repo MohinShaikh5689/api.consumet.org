@@ -9,3 +9,5 @@ dist
 package-lock.json
 yarn.lock
 consumet.ts/
+temp/
+scratch/

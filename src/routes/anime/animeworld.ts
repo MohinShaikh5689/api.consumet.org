@@ -73,11 +73,22 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   });
 
   fastify.get(
-    '/watch/:episodeId',
+    '/watch/*',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            '*': { type: 'string', description: 'episodeId' },
+          },
+          required: ['*'],
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const episodeId = (request.params as { episodeId: string }).episodeId;
+      const episodeId = (request.params as { '*': string })['*'];
 
-      if (typeof episodeId === 'undefined')
+      if (!episodeId)
         return reply.status(400).send({ message: 'episodeId is required' });
 
       try {
