@@ -52,7 +52,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       message: "To use the Miruro provider in production without facing Cloudflare WAF blocks, you must deploy a Python bypass helper.",
       instructions: [
         "1. Clone the Python bypass helper repository: https://github.com/solo12345689/Miruro-API",
-        "2. Deploy the Python application on a free hosting provider (such as Render, Koyeb, or PythonAnywhere).",
+        "2. Deploy the Python application on a VPS (Virtual Private Server) with a clean residential or non-datacenter IP range (Free cloud hosts like Render are blocked by Cloudflare's WAF).",
         "3. Set the environment variable in your Node.js application: MIRURO_PROXY_URL = <your-deployed-python-helper-url>",
         "4. If no MIRURO_PROXY_URL is set, it will default to http://127.0.0.1:8000 for local development."
       ],
