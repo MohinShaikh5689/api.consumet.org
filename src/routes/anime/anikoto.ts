@@ -129,10 +129,17 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
           },
           required: ['episodeId'],
         },
+        querystring: {
+          type: 'object',
+          properties: {
+            server: { type: 'string', description: 'The server name (e.g. HD-1, Vidstream-2)' },
+          },
+        },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const episodeId = (request.params as { episodeId: string }).episodeId;
+      const { server } = request.query as { server?: string };
 
       if (typeof episodeId === 'undefined')
         return reply.status(400).send({ message: 'episodeId is required' });
@@ -141,11 +148,11 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         let res = redis
           ? await cache.fetch(
               redis as Redis,
-              `anikoto:watch:${episodeId}`,
-              async () => await anikoto.fetchEpisodeSources(episodeId),
+              `anikoto:watch:${episodeId}:${server || 'default'}`,
+              async () => await anikoto.fetchEpisodeSources(episodeId, server as any),
               REDIS_TTL,
             )
-          : await anikoto.fetchEpisodeSources(episodeId);
+          : await anikoto.fetchEpisodeSources(episodeId, server as any);
 
         const hostUrl = `${request.protocol}://${request.hostname}`;
 
