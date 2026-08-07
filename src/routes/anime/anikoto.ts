@@ -827,7 +827,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
      }
   });
 
-  fastify.get('/m3u8-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get(
+    '/m3u8-proxy',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'The absolute M3U8 playlist URL to proxy' },
+            referer: { type: 'string', description: 'The Referer header required by the CDN' },
+          },
+          required: ['url'],
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
     const { url, referer } = request.query as { url: string; referer?: string };
     if (!url) return reply.status(400).send({ message: 'url is required' });
 
@@ -870,7 +884,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     }
   });
 
-  fastify.get('/segment-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get(
+    '/segment-proxy',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'The absolute segment URL to proxy and decrypt' },
+            referer: { type: 'string', description: 'The Referer header required by the CDN' },
+          },
+          required: ['url'],
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
     const { url, referer } = request.query as { url: string; referer?: string };
     if (!url) return reply.status(400).send({ message: 'url is required' });
 
