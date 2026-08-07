@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply, FastifyInstance, RegisterOptions } from 'fastify';
 import { ANIME } from '@consumet/extensions';
 import { StreamingServers, SubOrSub } from '@consumet/extensions/dist/models';
+import axios from 'axios';
 
 import cache from '../../utils/cache';
 import { redis, REDIS_TTL } from '../../main';
@@ -145,6 +146,40 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
               REDIS_TTL,
             )
           : await anikoto.fetchEpisodeSources(episodeId);
+
+        const hostUrl = `${request.protocol}://${request.hostname}`;
+
+        if (res.sub?.sources) {
+          res.sub.sources = res.sub.sources.map((src: any) => {
+            if (src.url) {
+              const originalUrl = src.url;
+              const referer = src.headers?.Referer || src.headers?.referer || '';
+              src.url = `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(originalUrl)}&referer=${encodeURIComponent(referer)}`;
+            }
+            return src;
+          });
+          if (res.sub.download) {
+            const originalDownload = res.sub.download;
+            const referer = res.sub.sources?.[0]?.headers?.Referer || '';
+            res.sub.download = `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(originalDownload)}&referer=${encodeURIComponent(referer)}`;
+          }
+        }
+
+        if (res.dub?.sources) {
+          res.dub.sources = res.dub.sources.map((src: any) => {
+            if (src.url) {
+              const originalUrl = src.url;
+              const referer = src.headers?.Referer || src.headers?.referer || '';
+              src.url = `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(originalUrl)}&referer=${encodeURIComponent(referer)}`;
+            }
+            return src;
+          });
+          if (res.dub.download) {
+            const originalDownload = res.dub.download;
+            const referer = res.dub.sources?.[0]?.headers?.Referer || '';
+            res.dub.download = `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(originalDownload)}&referer=${encodeURIComponent(referer)}`;
+          }
+        }
 
         reply.status(200).send(res);
       } catch (err) {
@@ -775,11 +810,93 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const episodeId = (request.params as { episodeId: string }).episodeId;
 
+     try {
+       let res = await anikoto.fetchDownloadLinks(episodeId);
+       const hostUrl = `${request.protocol}://${request.hostname}`;
+       res = res.map((dl: any) => {
+         if (dl.downloadUrl && dl.downloadUrl.includes('.m3u8')) {
+           const originalUrl = dl.downloadUrl;
+           const referer = dl.headers?.Referer || dl.headers?.referer || '';
+           dl.downloadUrl = `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(originalUrl)}&referer=${encodeURIComponent(referer)}`;
+         }
+         return dl;
+       });
+       reply.status(200).send(res);
+     } catch (err) {
+       reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
+     }
+  });
+
+  fastify.get('/m3u8-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { url, referer } = request.query as { url: string; referer?: string };
+    if (!url) return reply.status(400).send({ message: 'url is required' });
+
     try {
-      let res = await anikoto.fetchDownloadLinks(episodeId);
-      reply.status(200).send(res);
-    } catch (err) {
-      reply.status(500).send({ message: 'Something went wrong. Contact developer for help.' });
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      };
+      if (referer) {
+        headers['Referer'] = referer.includes('megaplay.buzz') ? 'https://megaplay.buzz/' : referer;
+      }
+
+      const { data } = await axios.get(url, { headers });
+      const hostUrl = `${request.protocol}://${request.hostname}`;
+      
+      const lines = data.split('\n');
+      const rewrittenLines = lines.map((line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return line;
+        
+        if (trimmed.startsWith('#') || (!trimmed.includes('.m3u8') && !trimmed.includes('.image') && !trimmed.includes('.jpg') && !trimmed.includes('.ts') && !trimmed.includes('tiktokcdn.com') && !trimmed.includes('lostproject.club'))) {
+          return line;
+        }
+        
+        let absoluteUrl = trimmed;
+        if (!trimmed.startsWith('http')) {
+          absoluteUrl = new URL(trimmed, url).href;
+        }
+        
+        if (trimmed.includes('.m3u8')) {
+          return `${hostUrl}/anime/anikoto/m3u8-proxy?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer || '')}`;
+        }
+        
+        return `${hostUrl}/anime/anikoto/segment-proxy?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer || '')}`;
+      });
+
+      reply.header('Content-Type', 'application/vnd.apple.mpegurl');
+      reply.status(200).send(rewrittenLines.join('\n'));
+    } catch (err: any) {
+      reply.status(500).send({ message: err.message });
+    }
+  });
+
+  fastify.get('/segment-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { url, referer } = request.query as { url: string; referer?: string };
+    if (!url) return reply.status(400).send({ message: 'url is required' });
+
+    try {
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      };
+      if (referer) {
+        headers['Referer'] = referer.includes('megaplay.buzz') ? 'https://megaplay.buzz/' : referer;
+      }
+
+      const res = await axios.get(url, {
+        headers,
+        responseType: 'arraybuffer',
+        timeout: 15000
+      });
+      
+      let buffer = Buffer.from(res.data);
+      if (buffer.length > 70 && buffer.readUInt32BE(0) === 0x89504E47) {
+        buffer = buffer.subarray(70);
+      }
+      
+      reply.header('Content-Type', 'video/mp2t');
+      reply.status(200).send(buffer);
+    } catch (err: any) {
+      reply.status(500).send({ message: err.message });
     }
   });
 };
