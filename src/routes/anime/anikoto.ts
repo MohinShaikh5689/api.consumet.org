@@ -857,7 +857,13 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       };
       if (referer) {
-        headers['Referer'] = referer.includes('megaplay.buzz') ? 'https://megaplay.buzz/' : referer;
+        try {
+          const refUrl = new URL(referer);
+          headers['Referer'] = `${refUrl.origin}/`;
+          headers['Origin'] = refUrl.origin;
+        } catch {
+          headers['Referer'] = referer;
+        }
       }
 
       const { data } = await axios.get(url, { headers });
@@ -868,7 +874,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         const trimmed = line.trim();
         if (!trimmed) return line;
         
-        if (trimmed.startsWith('#') || (!trimmed.includes('.m3u8') && !trimmed.includes('.image') && !trimmed.includes('.jpg') && !trimmed.includes('.ts') && !trimmed.includes('tiktokcdn.com') && !trimmed.includes('lostproject.club'))) {
+        if (trimmed.startsWith('#')) {
           return line;
         }
         
@@ -914,7 +920,13 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       };
       if (referer) {
-        headers['Referer'] = referer.includes('megaplay.buzz') ? 'https://megaplay.buzz/' : referer;
+        try {
+          const refUrl = new URL(referer);
+          headers['Referer'] = `${refUrl.origin}/`;
+          headers['Origin'] = refUrl.origin;
+        } catch {
+          headers['Referer'] = referer;
+        }
       }
 
       const res = await axios.get(url, {
