@@ -32,6 +32,14 @@ export const REDIS_TTL = Number(process.env.REDIS_TTL) || 3600;
 const fastify = Fastify({
   maxParamLength: 1000,
   logger: true,
+  // Vercel terminates TLS at its edge and forwards to the function over
+  // plain HTTP, so `request.protocol` reports 'http' unless Fastify is told
+  // to trust the `x-forwarded-proto`/`x-forwarded-host` headers Vercel sets.
+  // Without this, any route building an absolute URL from request.protocol
+  // (e.g. anikoto's m3u8-proxy rewriting) bakes in "http://" even though the
+  // domain is https-only, forcing a redirect that iOS's AVPlayer won't
+  // reliably follow for HLS sub-playlists.
+  trustProxy: true,
 });
 
 export const tmdbApi = process.env.TMDB_KEY && process.env.TMDB_KEY;
