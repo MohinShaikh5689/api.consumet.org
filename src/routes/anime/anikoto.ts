@@ -891,6 +891,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       });
 
       reply.header('Content-Type', 'application/vnd.apple.mpegurl');
+      reply.header('Accept-Ranges', 'bytes');
       reply.status(200).send(rewrittenLines.join('\n'));
     } catch (err: any) {
       reply.status(500).send({ message: err.message });
@@ -939,8 +940,31 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       if (buffer.length > 70 && buffer.readUInt32BE(0) === 0x89504E47) {
         buffer = buffer.subarray(70);
       }
-      
+
+      // iOS's AVPlayer issues Range requests when loading HLS segments and
+      // expects a proper 206/Content-Range response — silently returning
+      // 200 with the full body (as this endpoint always did) causes it to
+      // hang indefinitely rather than error, since it never gets the
+      // partial-content response it's waiting for. The de-obfuscation above
+      // needs the complete upstream buffer, so range support is applied
+      // ourselves after fetching the full file rather than forwarding the
+      // client's Range header upstream.
+      reply.header('Accept-Ranges', 'bytes');
       reply.header('Content-Type', 'video/mp2t');
+
+      const range = request.headers.range;
+      const rangeMatch = range && /^bytes=(\d+)-(\d*)$/.exec(range);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10);
+        const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : buffer.length - 1;
+        const chunk = buffer.subarray(start, end + 1);
+        reply.header('Content-Range', `bytes ${start}-${end}/${buffer.length}`);
+        reply.header('Content-Length', String(chunk.length));
+        reply.status(206).send(chunk);
+        return;
+      }
+
+      reply.header('Content-Length', String(buffer.length));
       reply.status(200).send(buffer);
     } catch (err: any) {
       reply.status(500).send({ message: err.message });
